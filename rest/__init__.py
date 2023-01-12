@@ -36,16 +36,20 @@ class PathBuilder:
     def build(self):
         paths = {
             "domains": {
-                "account": {
-                    "path": 'api/Profile',
+                "auth": {
+                    "path": 'profiles/authenticated',
                     "name": None
                 },
                 "profiles": {
-                    "path": 'api/Profile/profiles',
+                    "path": 'profiles',
                     "name": None
                 },
-                "token": {
+                "tokens": {
                     "path": 'tokens',
+                    "name": None
+                },
+                "generate": {
+                    "path": 'tokens/generate',
                     "name": None
                 }
             }
@@ -69,7 +73,7 @@ class PathBuilder:
         operators = ["e", "lt", "lte", "gt", "gte"]
         for param in self.params.keys():
             if param in operators:
-                params['account.id'] = f'{param}:{self.params[param]}'
+                params['profile.id'] = f'{param}:{self.params[param]}'
             else:
                 params[param] = self.params[param]
         if params:
@@ -101,6 +105,23 @@ class APIRequester:
             self.url,
             headers=self.headers
         )
+        return response
+
+    def post(self):
+        response = requests.post(
+            self.url,
+            self.data,
+            headers=self.headers
+        )
+        return response
+
+    def put(self):
+        response = requests.put(
+            self.url,
+            self.data,
+            headers=self.headers
+        )
+        return response
 
 
 class Client(object):
@@ -120,7 +141,7 @@ class Client(object):
         self.env = env or environ.get('hedera_mirror_ENV')
 
         base_url = {
-            "main": "http://localhost:9362",
+            "main": "http://localhost:9362/api",
         }
         try:
             self.base_url = base_url[self.env.strip().lower()]
@@ -128,7 +149,8 @@ class Client(object):
             raise Exception("Use 'main as env")
 
         # Domains
-        self._account = None
+        self._profile = None
+        self._token = None
 
     def request(self, method, base_url, domain, version, profile_id=None,
                 domain_id=None, domain_action=None, params=None, data=None, headers=None, auth=None):
@@ -158,7 +180,17 @@ class Client(object):
         """
         Access the sdk Profile API
         """
-        if self._account is None:
-            from rest.account import Profile
-            self._account = Profile(self, self.base_url, 'token', self.hedera_mirror_version)
-        return self._account
+        if self._profile is None:
+            from rest.profile import Profile
+            self._profile = Profile(self, self.base_url, 'profiles', version="v1")
+        return self._profile
+
+    @property
+    def token(self):
+        """
+        Access the sdk Token API
+        """
+        if self._token is None:
+            from rest.token import Token
+            self._token = Token(self, self.base_url, 'tokens', version="v1")
+        return self._token
